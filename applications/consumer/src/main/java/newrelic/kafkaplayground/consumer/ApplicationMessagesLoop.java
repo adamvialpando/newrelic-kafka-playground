@@ -21,8 +21,7 @@ public class ApplicationMessagesLoop implements Runnable {
 
     private final KafkaConsumer<String, String> consumer;
     private final List<String> topics;
-
-    @Trace(dispatcher = true)
+    
     private void processMessage(ConsumerRecord<String, String> record) {
         Iterable<Header> headers = record.headers().headers("newrelic");
         for (Header header : headers) {
@@ -47,9 +46,20 @@ public class ApplicationMessagesLoop implements Runnable {
         this.topics = topics;
         this.consumer = new KafkaConsumer<>(consumerProperites);
     }
-
+    @Trace(dispatcher = true)
     @Override
     public void run() {
+            // randomly sleep for a long time to simulate extreme lag
+            if (Math.random() < 0.1) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    NewRelic.noticeError(e);
+                    throw new RuntimeException(e);
+                    
+                }
+            }
+    
         try {
             NotifyOnRebalance nor = new NotifyOnRebalance();
             consumer.subscribe(topics, nor);
@@ -58,10 +68,21 @@ public class ApplicationMessagesLoop implements Runnable {
                 ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(Long.MAX_VALUE));
                 for (ConsumerRecord<String, String> record : records) {
                     processMessage(record);
+                    // do somthing to increase cpu load
+                    // try {
+                    //     Thread.sleep(Math.round(Math.random()));
+                    // } catch (InterruptedException e) {
+                    //     logger.error("Interrupted", e);
+                    //     NewRelic.noticeError(e);
+                    // }
+                    if (Math.random() < 0.1) {
+                        //new relic custom parameter indicating consumer rebalance
+                        NewRelic.getAgent().getTracedMethod().addCustomAttribute("kafka.consumer.rebalance", true);
+                    }
                 }
             }
         } catch (WakeupException e) {
-            // ignore for shutdown
+            NewRelic.noticeError(e);
         } finally {
             consumer.close();
         }

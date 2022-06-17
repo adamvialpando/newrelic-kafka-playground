@@ -8,6 +8,7 @@ import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.KafkaException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,11 +25,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Properties;
 import java.util.UUID;
 
-@WebServlet(name = "MessageServlet", urlPatterns = {"/sendmessage"}, loadOnStartup = 1, initParams = {
+@WebServlet(name = "MessageServlet", urlPatterns = {"/error"}, loadOnStartup = 1, initParams = {
         @WebInitParam(name = "applicationTopicName", value = "application-messages")})
-public class MessageServlet extends HttpServlet {
+public class ErrorServlet extends HttpServlet {
 
-    final Logger logger = LoggerFactory.getLogger(MessageServlet.class);
+    final Logger logger = LoggerFactory.getLogger(ErrorServlet.class);
 
     private String applicationTopicName;
 
@@ -39,11 +40,12 @@ public class MessageServlet extends HttpServlet {
         if (applicationTopicNameEnv != null) {
             this.applicationTopicName = applicationTopicNameEnv;
         } else {
-            this.applicationTopicName = ctx.getInitParameter("applicationTopicName");
+            this.applicationTopicName = ctx.getInitParameter(applicationTopicName);
+        
         }
 
     }
-    @Trace(dispatcher = true)
+
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
@@ -71,25 +73,29 @@ public class MessageServlet extends HttpServlet {
         if (NewRelic.getAgent().getTraceMetadata().isSampled()) {
             logger.info("[Producer clientId={}] Sending message {}", producerProps.getProperty("client.id"), payload);
         }
-        // randomly insert lag to demonstrate latency
-        if (Math.random() < 0.1) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                //create newrelic custom parameter for the exception
-                NewRelic.addCustomParameter("exception", e.getMessage());
-                //new relic gather call stack
-                NewRelic.noticeError(e);   
-            }
-        }
+
         producer.send(record,
                 new Callback() {
                     @Trace(async = true)
+                    //start new relic transaction
                     public void onCompletion(RecordMetadata metadata, Exception e) {
                         transactionToken.linkAndExpire();
                         NewRelic.getAgent().getTracedMethod().addCustomAttribute("kafka.producer.config.client.id", producerProps.getProperty("client.id"));
+                        //randomly throw a Kafka exception to demonstrate error handling
+                        if (Math.random() < 0.5) {
+                            throw new KafkaException("Kafka exception");
+                            
+                        }
+                        // randomly throw UnsupportedOperationException("Unsupported operation exception")
+                        if (Math.random() < 0.5) {
+                            throw new UnsupportedOperationException("Unsupported operation exception");
+                        }
+                        //randomly throw IllegalArgumentException("Illegal argument exception"),
+                        if (Math.random() < 0.5) {
+                            throw new IllegalArgumentException("Illegal argument exception");
+                        }
+
                         if (e != null) {
-                            NewRelic.noticeError(e);   
                             logger.error("Got an error (asynchronously) when sending message {}", messageId, e);
                         } else {
                             // annotate the span with the metadta

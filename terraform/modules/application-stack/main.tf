@@ -33,6 +33,7 @@ resource "aws_instance" "swarm_nodes" {
     swarm_manager = count.index == 0 ? "true" : "false"
     Project       = var.project_name
     DisplayName   = "swarm-${count.index}"
+    owner_email   = "avialpando@confluent.io"
   }
   
   lifecycle {

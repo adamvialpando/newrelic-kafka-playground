@@ -34,6 +34,7 @@ resource "aws_security_group" "kafka_playground_sg" {
   vpc_id = local.vpc_id
 
   tags = {
+    owner_email = "avialpando@confluent.io"
     Name    = "newrelic_kafka_playground_sg"
     Project = var.project_name
   }

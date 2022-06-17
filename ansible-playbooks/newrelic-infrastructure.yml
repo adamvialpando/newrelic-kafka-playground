@@ -18,10 +18,10 @@
             role: "{{ role }}"
             zookeeper_my_id: "{{ my_id }}"
             usecase: "kafka"
-    - name: logging
-      vars:
-        logging_tag_name: zookeeper
-        server_log: /var/log/zookeeper/server.log
+    # - name: logging
+    #   vars:
+    #     logging_tag_name: zookeeper
+    #     server_log: /var/log/zookeeper/server.log
     - name: newrelic-kafka-integration
     
 - name: Install New Relic Infrastructure on Kafka Brokers

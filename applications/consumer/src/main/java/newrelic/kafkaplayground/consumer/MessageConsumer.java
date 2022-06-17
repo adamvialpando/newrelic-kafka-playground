@@ -4,6 +4,9 @@ import newrelic.kafkaplayground.common.util.PropertiesLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.newrelic.api.agent.NewRelic;
+import com.newrelic.api.agent.Trace;
+
 import java.io.StringReader;
 import java.util.Arrays;
 import java.util.Properties;
@@ -47,6 +50,7 @@ public class MessageConsumer {
                 try {
                     executor.awaitTermination(5000, TimeUnit.MILLISECONDS);
                 } catch (InterruptedException e) {
+                    NewRelic.noticeError(e);
                     logger.error("Caught exception when shutting down", e);
                 }
             }

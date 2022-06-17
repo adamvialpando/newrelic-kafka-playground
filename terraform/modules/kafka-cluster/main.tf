@@ -33,6 +33,8 @@ resource "aws_instance" "zookeeper_nodes" {
     my_id       = "${count.index}"
     Project     = var.project_name
     DisplayName = "zookeeper-node-${count.index}"
+    owner_email   = "avialpando@confluent.io"
+
   }
   
   lifecycle {
@@ -55,6 +57,8 @@ resource "aws_instance" "kafka_brokers" {
     broker_id   = "${count.index}"
     Project     = var.project_name
     DisplayName = "kafka-broker-${count.index}"
+    owner_email   = "avialpando@confluent.io"
+
   }
   
   lifecycle {
